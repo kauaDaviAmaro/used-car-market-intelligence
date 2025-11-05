@@ -1,0 +1,17 @@
+# Ambientes virtuais
+.venv/
+__pycache__/
+*.pyc
+
+# Dados (nunca suba dados brutos grandes!)
+data/raw/
+data/processed/
+
+# Modelos
+models/*.pkl
+
+# Notebooks de cache
+.ipynb_checkpoints
+
+# Logs
+*.log
