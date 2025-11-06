@@ -1,3 +1,12 @@
 playwright
 pandas
 numpy
+joblib
+xgboost
+scikit-learn
+seaborn
+matplotlib
+plotly
+fastapi
+uvicorn
+streamlit
