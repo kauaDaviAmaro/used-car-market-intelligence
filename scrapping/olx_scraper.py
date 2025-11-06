@@ -3,11 +3,12 @@ import time
 import pandas as pd
 import random
 import logging
+import unicodedata
 
 logger = logging.getLogger(__name__)
 
 URL_TARGET = "https://www.olx.com.br/autos-e-pecas/carros-vans-e-utilitarios"
-NUM_PAGES = 1
+NUM_PAGES = 100
 
 
 def safe_query(element, selector, method="inner_text"):
@@ -123,19 +124,39 @@ def extract_car_details(page):
     return details
 
 
+def normalize_option_name(option_text):
+    """Normalize option name by removing accents and special characters."""
+    # Normalize the option name: remove accents and convert to lowercase
+    normalized_key = unicodedata.normalize('NFD', option_text.lower())
+    normalized_key = ''.join(c for c in normalized_key if unicodedata.category(c) != 'Mn')
+    # Replace spaces with underscores
+    normalized_key = normalized_key.replace(" ", "_")
+    # Remove special characters, keep only alphanumeric and underscores
+    normalized_key = ''.join(c if c.isalnum() or c == '_' else '_' for c in normalized_key)
+    # Remove multiple consecutive underscores
+    while '__' in normalized_key:
+        normalized_key = normalized_key.replace('__', '_')
+    return normalized_key.strip('_')
+
+
 def extract_car_options(page):
     """Extract car options/features from car details page."""
     options = {}
     car_options_element = page.locator('div[class^="ad__sc-1jr3zuf-1"]').all()
-    logger.debug(f"[Opcionais] Encontrados {len(car_options_element)} opcionais")
+    logger.debug(f"[Opcionais] Encontrados {len(car_options_element)} elementos de opcionais")
     
     for option in car_options_element:
         try:
             key_span = option.inner_text(timeout=2000)
             if key_span:
-                key_span = key_span.lower().replace(" ", "_")
-                options[key_span] = True
-                logger.debug(f"[Opcionais] Opcional encontrado: {key_span}")
+                # Split by newlines in case multiple options are concatenated
+                option_texts = [opt.strip() for opt in key_span.split('\n') if opt.strip()]
+                
+                for opt_text in option_texts:
+                    normalized_key = normalize_option_name(opt_text)
+                    if normalized_key:
+                        options[normalized_key] = True
+                        logger.debug(f"[Opcionais] Opcional encontrado: {opt_text} -> {normalized_key}")
         except Exception as e:
             logger.debug(f"[Opcionais] Falha ao extrair opcional: {e}")
             continue
@@ -296,11 +317,29 @@ def save_data(data):
     logger.info(f"[Salvamento] Salvando {total_records} registro(s) em CSV")
     
     try:
-        df = pd.DataFrame(data)
+        # First, collect all option keys (keys with True values)
+        all_option_keys = set()
+        for record in data:
+            for key, value in record.items():
+                if value is True:
+                    all_option_keys.add(key)
+        
+        # Ensure all records have all option columns
+        normalized_data = []
+        for record in data:
+            normalized_record = record.copy()
+            # Set all option keys to False if not present
+            for option_key in all_option_keys:
+                if option_key not in normalized_record:
+                    normalized_record[option_key] = False
+            normalized_data.append(normalized_record)
+        
+        df = pd.DataFrame(normalized_data)
         file_path = "data/raw/olx_cars.csv"
         df.to_csv(file_path, index=False)
         logger.info(f"[Salvamento] Dados salvos com sucesso em: {file_path}")
         logger.info(f"[Salvamento] Total de colunas: {len(df.columns)}")
+        logger.info(f"[Salvamento] Total de colunas de opcionais: {len(all_option_keys)}")
     except Exception as e:
         logger.error(f"[Salvamento] Erro ao salvar dados: {e}")
         raise
