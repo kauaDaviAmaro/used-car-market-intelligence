@@ -19,8 +19,6 @@ V4_GOLDEN_PARAMS = {
 }
 
 def load_and_prep_data(project_root):
-    """Carrega, engenheira e limpa os dados para o V4."""
-    
     input_path = os.path.join(project_root, 'data', 'processed', 'olx_cars_cleaned.csv')
     df = pd.read_csv(input_path)
 
@@ -52,20 +50,19 @@ def load_and_prep_data(project_root):
     
     return X, y, X.columns
 
-def build_preprocessor(X_columns):
-    """Constrói o ColumnTransformer V2 (65 features)."""
-    
-    numeric_features = [col for col in X_columns if X_columns.dtype(col) in ['float64', 'int64']]
-    categorical_features = [col for col in X_columns if X_columns.dtype(col) == 'object']
-    boolean_features = [col for col in X_columns if X_columns.dtype(col) == 'bool']
-
-    all_cols = X_columns.tolist()
+def build_preprocessor(X_columns, X_sample=None):
+    all_cols = X_columns.tolist() if hasattr(X_columns, 'tolist') else list(X_columns)
     
     numeric_features = [col for col in ['car_age', 'km_per_year', 'motor_clean', 'quilometragem_clean', 'final_de_placa', 'portas_clean', 'potencia_clean', 'zip_code_clean'] if col in all_cols]
+    
     categorical_features = [col for col in ['marca', 'state_clean', 'câmbio', 'combustível', 'direção', 'cor', 'tipo_de_veículo', 'tipo_de_direção', 'possui_kit_gnv'] if col in all_cols]
+    
     bool_candidates = [col for col in all_cols if col not in numeric_features and col not in categorical_features]
-    boolean_features = [col for col in bool_candidates if df[col].dtype == 'bool']
-
+    
+    if X_sample is not None:
+        boolean_features = [col for col in bool_candidates if X_sample[col].dtype == 'bool']
+    else:
+        boolean_features = bool_candidates
 
     numeric_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='median'))
@@ -85,33 +82,27 @@ def build_preprocessor(X_columns):
     return preprocessor
 
 def main():
-    print("--- Iniciando Treinamento do Modelo Final (V4) ---")
-    
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(script_dir)
     
-    print("Carregando e preparando dados...")
     X_full, y_full, X_columns = load_and_prep_data(project_root)
     
-    print("Construindo preprocessor...")
-    preprocessor = build_preprocessor(X_columns)
+    preprocessor = build_preprocessor(X_columns, X_sample=X_full)
     
-    print("Construindo pipeline final com XGBoost...")
     model_pipeline = Pipeline(steps=[
         ('preprocessor', preprocessor),
         ('model', XGBRegressor(**V4_GOLDEN_PARAMS))
     ])
     
-    print("Treinando o modelo em 100% dos dados...")
     model_pipeline.fit(X_full, y_full)
-    print("Treinamento concluído.")
     
-    output_path = os.path.join(project_root, 'models', 'price_predictor_v4.pkl')
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    output_path_v1 = os.path.join(project_root, 'models', 'price_predictor_v1.pkl')
+    output_path_v4 = os.path.join(project_root, 'models', 'price_predictor_v4.pkl')
+    os.makedirs(os.path.dirname(output_path_v1), exist_ok=True)
     
-    print(f"Salvando modelo treinado em: {output_path}")
-    joblib.dump(model_pipeline, output_path)
-    print("--- Modelo salvo com sucesso! ---")
+    joblib.dump(model_pipeline, output_path_v1)
+    joblib.dump(model_pipeline, output_path_v4)
 
 if __name__ == "__main__":
     main()
+

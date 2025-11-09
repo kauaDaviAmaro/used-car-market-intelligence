@@ -20,7 +20,7 @@ class ModelLoader:
         project_root = os.path.dirname(script_dir)
         
         # Load model
-        model_path = os.path.join(project_root, 'models', 'price_predictor_v4.pkl')
+        model_path = os.path.join(project_root, 'models', 'price_predictor_v1.pkl')
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file not found at {model_path}")
         self.model = joblib.load(model_path)
