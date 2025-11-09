@@ -7,8 +7,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./models:/app/models
-      - ./data/processed:/app/data/processed
+      - ./models:/app/models:ro
+      - ./data/processed:/app/data/processed:ro
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
@@ -18,6 +18,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    networks:
+      - app-network
 
   dashboard:
     build:
@@ -27,11 +29,32 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - ./models:/app/models
-      - ./data/processed:/app/data/processed
+      - ./models:/app/models:ro
+      - ./data/processed:/app/data/processed:ro
     environment:
       - PYTHONUNBUFFERED=1
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - app-network
 
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.pipeline
+    container_name: used-car-pipeline
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles:
+      - pipeline
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
