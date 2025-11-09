@@ -215,6 +215,30 @@ python dashboard/run.py
 
 The dashboard will be live at `http://localhost:8501`.
 
+### 5. Run with Docker
+
+You can also run the API and Dashboard using Docker:
+
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Run in detached mode
+docker-compose up -d
+
+# Stop services
+docker-compose down
+
+# View logs
+docker-compose logs -f
+```
+
+The services will be available at:
+- API: `http://localhost:8000`
+- Dashboard: `http://localhost:8501`
+
+**Note:** Make sure you have the trained model file (`models/price_predictor_v1.pkl`) before running Docker containers.
+
 ### Script Principal (pipeline.py)
 
 O script `pipeline.py` oferece uma interface unificada para executar todas as operações do projeto:
